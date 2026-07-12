@@ -54,6 +54,14 @@ app.use(express.json());
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 
+// Validasi kredensial SMTP saat startup
+if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
+    console.error('⚠️  [PERINGATAN] GMAIL_USER atau GMAIL_APP_PASSWORD tidak ditemukan di .env!');
+    console.error('   Buat file .env di folder ini dengan isi:');
+    console.error('   GMAIL_USER=emailkamu@gmail.com');
+    console.error('   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx');
+}
+
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
