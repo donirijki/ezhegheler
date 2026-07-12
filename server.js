@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const path = require('path');
@@ -8,9 +9,9 @@ const fs = require('fs');
 const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
-const PORT = 3000;
-const TCP_PORT = 3001;
-const UDP_PORT = 4000;
+const PORT = process.env.PORT || 3000;
+const TCP_PORT = process.env.TCP_PORT || 3001;
+const UDP_PORT = process.env.UDP_PORT || 4000;
 
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 
@@ -50,8 +51,8 @@ app.use(express.json());
 // ==========================================
 // KONFIGURASI GMAIL SMTP (SUNGGUHAN)
 // ==========================================
-const GMAIL_USER = "donnyrizkyramadhan@gmail.com";
-const GMAIL_APP_PASSWORD = "ycjl qads qrcy fhpn"; // Ganti ini!
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
