@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Web App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .chat-container { background-color: #1e1e1e; padding: 20px; border-radius: 10px; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .messages { height: 300px; border: 1px solid #333; margin-bottom: 15px; overflow-y: auto; padding: 10px; border-radius: 5px; background-color: #121212; }
+        input[type="text"] { width: calc(100% - 90px); padding: 10px; border: none; border-radius: 5px; background-color: #333; color: white; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; background-color: #007bff; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2>🌐 Web Chat</h2>
+        <div class="messages" id="messages">
+            <p style="color: #4CAF50;">Selamat datang di aplikasi chat berbasis Web!</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="messageInput" placeholder="Ketik pesan...">
+            <button onclick="sendMessage()">Kirim</button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const messages = document.getElementById('messages');
+            if (input.value.trim() !== '') {
+                messages.innerHTML += `<p><strong>Anda:</strong> ${input.value}</p>`;
+                input.value = '';
+                messages.scrollTop = messages.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
