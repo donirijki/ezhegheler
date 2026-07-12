@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk - EzheGheler</title>
+    <title>Verifikasi - EzheGheler</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -413,47 +413,37 @@
         <!-- Right Side -->
         <div class="login-side">
             <div class="login-card">
-                <h2>Akses Sistem</h2>
-                <p>Silakan masuk menggunakan kredensial Anda.</p>
+                <h2>Verifikasi Login 2FA</h2>
+                <p>Kami telah mengirimkan OTP 6 digit ke email Anda. Masukkan kode tersebut untuk masuk ke sistem.</p>
 
-                <% if (typeof success !=='undefined' && success) { %>
-                    <div class="error-msg" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2);">
-                        <%= success %>
-                    </div>
-                <% } %>
                 <% if (typeof error !=='undefined' && error) { %>
                     <div class="error-msg">
                         <%= error %>
                     </div>
                 <% } %>
 
-                        <form action="/login" method="POST">
-                            <div class="input-group">
-                                <label for="email">Alamat Email Klien</label>
-                                <div class="input-wrapper">
-                                    <input type="email" id="email" name="email" required placeholder="nama@domain.com">
-                                    <i class="fa-solid fa-envelope"></i>
-                                </div>
-                            </div>
+                        <form action="/verify" method="POST">
+                            <input type="hidden" name="email" value="<%= email %>">
 
                             <div class="input-group">
-                                <label for="password">Kata Sandi Akses</label>
+                                <label for="code">Kode Verifikasi</label>
                                 <div class="input-wrapper">
-                                    <input type="password" id="password" name="password" required
-                                        placeholder="••••••••">
-                                    <i class="fa-solid fa-lock"></i>
+                                    <input type="text" id="code" name="code" required
+                                        placeholder="Contoh: 123456" maxlength="6" style="text-align: center; font-size: 24px; letter-spacing: 5px;">
+                                    <i class="fa-solid fa-key"></i>
                                 </div>
                             </div>
 
                             <button type="submit">
-                                Masuk & Minta Kode Verifikasi <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                                Verifikasi & Masuk Dashboard <i class="fa-solid fa-check-circle"></i>
                             </button>
-                            <p style="text-align: center; margin-top: 20px; color: var(--text-muted); font-size: 14px;">
-                                Belum punya akun? <a href="/register" style="color: var(--primary); text-decoration: none; font-weight: 600;">Daftar di sini</a>
+                            <p style="text-align: center; margin-top: 25px; color: var(--text-muted); font-size: 15px;">
+                                Salah email? <a href="/" style="color: var(--secondary); text-decoration: none; font-weight: 600;">Kembali ke Login</a>
                             </p>
                         </form>
             </div>
         </div>
     </div>
 </body>
+
 </html>

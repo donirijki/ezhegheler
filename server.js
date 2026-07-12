@@ -5,6 +5,7 @@ const multer = require('multer');
 const net = require('net');
 const dgram = require('dgram');
 const fs = require('fs');
+const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const PORT = 3000;
@@ -45,57 +46,142 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-let transporter;
-nodemailer.createTestAccount().then((account) => {
-    transporter = nodemailer.createTransport({
-        host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure,
-        auth: { user: account.user, pass: account.pass }
-    });
+
+// ==========================================
+// KONFIGURASI GMAIL SMTP (SUNGGUHAN)
+// ==========================================
+const GMAIL_USER = "donnyrizkyramadhan@gmail.com";
+const GMAIL_APP_PASSWORD = "ycjl qads qrcy fhpn"; // Ganti ini!
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASSWORD
+    }
 });
 
-app.get('/', (req, res) => res.render('login', { error: null }));
+const pendingVerifications = {};
+
+app.get('/', (req, res) => res.render('login', { error: null, success: req.query.success }));
 
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    
-    // Sistem Database Mini (users.json)
+
     const dbPath = './users.json';
     let users = [];
-    if (fs.existsSync(dbPath)) {
-        users = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    }
+    if (fs.existsSync(dbPath)) users = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
 
     let user = users.find(u => u.email === email);
-    let isLoginValid = false;
-    let errorMsg = "";
 
     if (!user) {
-        // Jika email belum ada, otomatis daftar (auto-register) untuk kemudahan
-        users.push({ email, password });
-        fs.writeFileSync(dbPath, JSON.stringify(users, null, 2));
-        isLoginValid = true;
-        console.log(`[AUTH] Pengguna baru terdaftar: ${email}`);
-    } else {
-        // Jika email sudah ada, WAJIB cocokkan password-nya
-        if (user.password === password) {
-            isLoginValid = true;
-            console.log(`[AUTH] Login berhasil: ${email}`);
-        } else {
-            errorMsg = "Kata sandi yang Anda masukkan salah!";
-            console.log(`[AUTH] Login gagal (password salah): ${email}`);
-        }
+        return res.render('login', { error: 'Akun tidak ditemukan. Silakan daftar terlebih dahulu.', success: null });
+    }
+    if (user.password !== password) {
+        return res.render('login', { error: 'Kata sandi yang Anda masukkan salah!', success: null });
     }
 
-    if (isLoginValid) {
-        try {
-            const info = await transporter.sendMail({
-                from: '"Sistem" <no-reply@jaringan.com>', to: email, subject: 'Login Berhasil',
-                html: `<h2>Sukses</h2><p>Waktu: ${new Date().toLocaleString('id-ID')}</p>`
-            });
-            console.log(`🔗 EMAIL DI SINI: ${nodemailer.getTestMessageUrl(info)}`);
-            res.redirect(`/dashboard?email=${email}`);
-        } catch (e) { res.render('login', { error: 'Gagal mengirim email.' }); }
-    } else { res.render('login', { error: errorMsg }); }
+    // Password benar → kirim OTP 2FA ke email
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingVerifications[email] = { code, expiresAt: Date.now() + 10 * 60000, isNewUser: false };
+
+    try {
+        await transporter.sendMail({
+            from: `"EzheGheler" <${GMAIL_USER}>`,
+            to: email,
+            subject: 'Kode Verifikasi 2FA EzheGheler',
+            html: `<h2>Kode Verifikasi Keamanan</h2><p>Gunakan kode berikut untuk menyelesaikan proses masuk:</p><p><strong style="font-size:30px; color:#4f46e5; letter-spacing: 8px;">${code}</strong></p><p>Kode kedaluwarsa dalam <b>10 menit</b>.</p>`
+        });
+        console.log(`[AUTH] OTP 2FA dikirim ke: ${email}`);
+        res.redirect(`/verify?email=${encodeURIComponent(email)}`);
+    } catch (e) {
+        console.error('[SMTP ERROR]', e.message);
+        res.render('login', { error: 'Gagal mengirim email verifikasi. Cek konfigurasi SMTP.', success: null });
+    }
+});
+
+// Rute Registrasi Akun Baru
+app.get('/register', (req, res) => res.render('register', { error: null, success: null }));
+
+app.post('/register', async (req, res) => {
+    const { email, password } = req.body;
+
+    const dbPath = './users.json';
+    let users = [];
+    if (fs.existsSync(dbPath)) users = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+
+    if (users.find(u => u.email === email)) {
+        return res.render('register', { error: 'Email ini sudah terdaftar! Silakan login.', success: null });
+    }
+
+    // Kirim OTP untuk verifikasi pendaftaran
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingVerifications[email] = { password, code, expiresAt: Date.now() + 10 * 60000, isNewUser: true };
+
+    try {
+        await transporter.sendMail({
+            from: `"EzheGheler" <${GMAIL_USER}>`,
+            to: email,
+            subject: 'Verifikasi Pendaftaran Akun EzheGheler',
+            html: `<h2>Selamat Datang di EzheGheler!</h2><p>Gunakan kode berikut untuk menyelesaikan pendaftaran akun Anda:</p><p><strong style="font-size:30px; color:#4f46e5; letter-spacing: 8px;">${code}</strong></p><p>Kode kedaluwarsa dalam <b>10 menit</b>.</p>`
+        });
+        console.log(`[AUTH] OTP Registrasi dikirim ke: ${email}`);
+        res.redirect(`/verify?email=${encodeURIComponent(email)}`);
+    } catch (e) {
+        console.error('[SMTP ERROR]', e.message);
+        res.render('register', { error: 'Gagal mengirim email verifikasi. Cek konfigurasi SMTP.', success: null });
+    }
+});
+
+// Verifikasi Kode OTP
+app.get('/verify', (req, res) => res.render('verify', { email: req.query.email, error: null }));
+
+app.post('/verify', (req, res) => {
+    const { email, code } = req.body;
+    const pending = pendingVerifications[email];
+
+    if (!pending || Date.now() > pending.expiresAt) {
+        return res.render('verify', { email, error: 'Sesi kedaluwarsa atau tidak valid. Silakan ulangi login.' });
+    }
+
+    if (pending.code === code) {
+        // Jika OTP benar
+        if (pending.isNewUser) {
+            const dbPath = './users.json';
+            let users = [];
+            if (fs.existsSync(dbPath)) users = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            users.push({ email, password: pending.password });
+            fs.writeFileSync(dbPath, JSON.stringify(users, null, 2));
+            console.log(`[AUTH] Pengguna baru terdaftar dan diverifikasi: ${email}`);
+        } else {
+            console.log(`[AUTH] Pengguna lama berhasil verifikasi 2FA: ${email}`);
+        }
+
+        delete pendingVerifications[email];
+        res.redirect(`/dashboard?email=${encodeURIComponent(email)}`);
+    } else {
+        res.render('verify', { email, error: 'Kode verifikasi salah!' });
+    }
+});
+
+// Simulasi Google OAuth 2.0 (Pop-up Buatan)
+app.get('/auth/google', (req, res) => {
+    const email = "donnyrizkyramadhan@gmail.com";
+
+    // Simpan ke users.json jika belum ada
+    const dbPath = './users.json';
+    let users = [];
+    if (fs.existsSync(dbPath)) users = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+
+    if (!users.find(u => u.email === email)) {
+        users.push({ email, password: "Google_OAuth_User" });
+        fs.writeFileSync(dbPath, JSON.stringify(users, null, 2));
+        console.log(`[AUTH] User Google OAuth baru terdaftar: ${email}`);
+    } else {
+        console.log(`[AUTH] Login Google OAuth disimulasikan: ${email}`);
+    }
+
+    res.redirect(`/dashboard?email=${encodeURIComponent(email)}`);
 });
 
 app.get('/dashboard', (req, res) => {
@@ -117,7 +203,7 @@ app.get('/stream-video', (req, res) => {
     // Cari file terbaru di folder uploads
     const files = fs.readdirSync('./uploads').filter(f => f.startsWith('TCP_Received_')).sort().reverse();
     if (files.length === 0) return res.status(404).send('Tidak ada video.');
-    
+
     const videoPath = path.join(__dirname, 'uploads', files[0]);
     const stat = fs.statSync(videoPath);
     const fileSize = stat.size;
@@ -151,7 +237,7 @@ app.get('/start-udp', (req, res) => {
         const videoPath = path.join(__dirname, 'uploads', files[0]);
         const stream = fs.createReadStream(videoPath, { highWaterMark: 1024 }); // baca per 1KB
         const udpClient = dgram.createSocket('udp4');
-        
+
         stream.on('data', (chunk) => {
             udpClient.send(chunk, UDP_PORT, 'localhost');
         });
