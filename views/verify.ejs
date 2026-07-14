@@ -8,10 +8,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/auth.css">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 </head>
 
 <body>
     <div class="ambient-bg">
+        <div id="particles-js" style="position: absolute; width: 100%; height: 100%; z-index: 1; opacity: 0.6;"></div>
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
 
@@ -22,8 +24,8 @@
         <div class="info-side">
             <div class="brand-logo"><i class="fa-solid fa-network-wired"></i> EzheGheler Platform</div>
 
-            <div class="live-badge">
-                <div class="pulse-dot"></div> Node.js Server Aktif
+            <div class="live-badge" id="pingBadge" style="transition: all 0.3s; cursor: default;">
+                <div class="pulse-dot"></div> Node.js Server Aktif <span id="pingText" style="margin-left:5px; opacity:0.8; font-weight: 500;">(Memuat...)</span>
             </div>
 
             <h1>Advanced Socket<br>Programming</h1>
@@ -95,5 +97,60 @@
         </div>
     </div>
 </body>
+
+<script src="/js/auth.js"></script>
+<script>
+    // Inisialisasi Animasi Jaringan (Particles.js)
+    particlesJS("particles-js", {
+        "particles": {
+            "number": { "value": 60, "density": { "enable": true, "value_area": 800 } },
+            "color": { "value": "#4f46e5" },
+            "shape": { "type": "circle" },
+            "opacity": { "value": 0.5, "random": false },
+            "size": { "value": 3, "random": true },
+            "line_linked": { "enable": true, "distance": 150, "color": "#ec4899", "opacity": 0.4, "width": 1 },
+            "move": { "enable": true, "speed": 2, "direction": "none", "random": false, "straight": false, "out_mode": "out", "bounce": false }
+        },
+        "interactivity": {
+            "detect_on": "canvas",
+            "events": { "onhover": { "enable": true, "mode": "grab" }, "onclick": { "enable": true, "mode": "push" }, "resize": true },
+            "modes": { "grab": { "distance": 140, "line_linked": { "opacity": 1 } }, "push": { "particles_nb": 4 } }
+        },
+        "retina_detect": true
+    });
+
+    // Fitur Ping Latency Real-time
+    function measurePing() {
+        const start = Date.now();
+        fetch('/ping')
+            .then(res => res.json())
+            .then(() => {
+                const latency = Date.now() - start;
+                const pingText = document.getElementById('pingText');
+                pingText.innerText = `(Ping: ${latency}ms)`;
+                
+                // Ubah warna dot berdasarkan kualitas jaringan
+                const dot = document.querySelector('.pulse-dot');
+                if (latency < 100) {
+                    dot.style.background = '#34d399'; // Hijau cepat
+                    dot.style.boxShadow = '0 0 10px #34d399';
+                } else if (latency < 300) {
+                    dot.style.background = '#f59e0b'; // Oranye sedang
+                    dot.style.boxShadow = '0 0 10px #f59e0b';
+                } else {
+                    dot.style.background = '#ef4444'; // Merah lambat
+                    dot.style.boxShadow = '0 0 10px #ef4444';
+                }
+            })
+            .catch(() => {
+                document.getElementById('pingText').innerText = "(Server Offline)";
+                document.querySelector('.pulse-dot').style.background = '#ef4444';
+            });
+    }
+
+    // Cek ping setiap 3 detik
+    measurePing();
+    setInterval(measurePing, 3000);
+</script>
 
 </html>
